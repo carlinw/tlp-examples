@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document analyzes the current `pacman.tpl` implementation against the official PAC-MAN specification (based on *The Pac-Man Dossier* by Jamey Pittman) and identifies language features that would be needed in TPL for a more faithful reproduction.
+This document analyzes the current `pacman.tpl` implementation against the official PAC-MAN specification (based on *The Pac-Man Dossier* by Jamey Pittman) and identifies language features needed for a faithful reproduction.
 
 ---
 
@@ -17,6 +17,8 @@ The current implementation provides a basic playable PAC-MAN game with:
 - Score tracking
 - Win/lose conditions
 - Tunnel wrapping
+
+**Current spec coverage: ~30-40%**
 
 ---
 
@@ -91,7 +93,7 @@ The current implementation provides a basic playable PAC-MAN game with:
 
 ---
 
-## Required Language Features Analysis
+## TPL Language Feature Assessment
 
 ### Features TPL Already Has (Adequate)
 
@@ -103,105 +105,168 @@ The current implementation provides a basic playable PAC-MAN game with:
 6. **Classes**: Object-oriented programming with `class`, `new`, `this`
 7. **Graphics Primitives**: `rect()`, `circle()`, `line()`, `triangle()`, `text()`
 8. **Input Handling**: `pressed()` for keyboard polling
-9. **Random Numbers**: `random(min, max)`
-10. **Timing**: `sleep(ms)`
+9. **Random Numbers**: `random(min, max)` - sufficient for frightened mode
+10. **Timing**: `sleep(ms)` - frame counting via loop iterations works fine
 
-### Missing Language Features for Faithful Implementation
+### Features with Easy Workarounds (Not Blockers)
 
-#### Critical (Block Core Gameplay Accuracy)
+| Feature | Workaround |
+|---------|------------|
+| `abs(x)` | `if (x < 0) { x = -x }` |
+| `floor(x)` | Integer division already truncates |
+| `ceil(x)` | `floor(x) + 1` when needed |
+| Frame counting | Count loop iterations, use `sleep(16)` for ~60 FPS |
+| Constants | Use `let` with naming discipline |
+| Enums | Use integers with comments |
 
-| Feature | Why Needed | Workaround Possible? |
-|---------|------------|---------------------|
-| **`sqrt()` function** | Euclidean distance for ghost pathfinding | Yes - use squared distances for comparison |
-| **Frame counter / `getTime()`** | 1/3 frame pauses, mode timers, animation sync | Partial - use `sleep()` accumulation |
-| **Floating-point precision control** | Sub-pixel positioning, speed percentages | Partial - use fixed-point with integers |
+### Features NOT Needed
 
-#### Important (Affect Authenticity)
-
-| Feature | Why Needed | Workaround Possible? |
-|---------|------------|---------------------|
-| **Bitwise operators** (`&`, `|`, `^`, `<<`, `>>`) | Efficient wall flags, PRNG implementation | Yes - use arithmetic (slower) |
-| **Constants** (`const`) | Magic numbers, tile counts, timing values | Yes - use `let` and discipline |
-| **Enums / named states** | Ghost modes (CHASE, SCATTER, FRIGHTENED) | Yes - use integers with comments |
-| **`floor()` / `ceil()` / `round()`** | Tile calculations from pixel positions | Partial - integer division truncates |
-| **`abs()` function** | Distance calculations | Yes - `if (x < 0) { x = -x }` |
-| **Modulo for negatives** | Wrap-around calculations | Need to verify behavior |
-
-#### Nice to Have (Polish & Completeness)
-
-| Feature | Why Needed | Workaround Possible? |
-|---------|------------|---------------------|
-| **Audio API** | Sound effects per spec | No - not possible without audio support |
-| **Sprite/image loading** | Authentic graphics, animations | No - must use primitives |
-| **`for` loop syntax** | Cleaner iteration | Yes - use `while` |
-| **Multiple return values / tuples** | Ghost movement returns (dx, dy) | Yes - use arrays (current approach) |
-| **Hash maps / dictionaries** | Named state lookups | Yes - use arrays with indices |
+| Feature | Reason |
+|---------|--------|
+| Bitwise operators | `random()` handles frightened mode; arithmetic works for flags |
+| PRNG seed control | `random()` is sufficient |
+| `millis()` / precise timer | Loop iteration counting works |
 
 ---
 
-## Feasibility Assessment
+## Required New Language Features
 
-### What CAN Be Faithfully Implemented with Current TPL
+### 1. sqrt() Function (Confirmed for upcoming release)
 
-1. **Complete maze with proper layout** - Already done
-2. **Basic ghost AI with scatter/chase** - Needs implementation work
-3. **Power pellet mode** - Partially done, needs timer improvements
-4. **Scoring system** - Needs ghost chain multiplier
-5. **Multiple levels** - Can track level number, adjust speeds
-6. **Ghost house exit logic** - Can use counters
-7. **Fruit bonuses** - Can implement with dot counter
-8. **Lives system** - Can add life counter and reset
+**Why needed:** Ghost pathfinding uses Euclidean distance to choose directions.
 
-### What CANNOT Be Faithfully Implemented Without New Features
+```
+// Spec requires: distance = sqrt((x2-x1)^2 + (y2-y1)^2)
+let dx = targetX - ghostX
+let dy = targetY - ghostY
+let distance = sqrt(dx * dx + dy * dy)
+```
 
-1. **True Euclidean pathfinding** - Need `sqrt()` (can approximate)
-2. **Sound effects** - Need audio API
-3. **Sprite-based graphics** - Need image loading
-4. **Frame-perfect timing** - Need frame counter or high-precision timer
-5. **PRNG for frightened mode** - Need seeded random or bitwise ops
+Note: For comparisons only, squared distances work. But `sqrt()` enables cleaner code and exact spec compliance.
+
+### 2. Audio API
+
+**Required sounds:**
+
+| Sound | Behavior | Trigger |
+|-------|----------|---------|
+| intro | Play once | Game start |
+| waka | Alternating tone | Each dot eaten |
+| siren | Loop, pitch rises as dots decrease | During normal play |
+| frightened | Different loop | During power mode |
+| ghost-eaten | Short effect | Eat ghost |
+| fruit-eaten | Short effect | Eat fruit |
+| extra-life | Short jingle | Hit 10k points |
+| death | Descending sequence | Pac-Man dies |
+
+**Proposed API (browser-compatible):**
+
+```
+sound("waka")              // Play sound effect once
+soundLoop("siren")         // Start looping sound
+soundStop("siren")         // Stop specific looping sound
+soundStop()                // Stop all sounds
+```
+
+**Optional enhancements:**
+```
+soundVolume("siren", 0.5)  // Volume 0.0 to 1.0
+soundRate("siren", 1.2)    // Playback rate for pitch shifting
+```
+
+**Browser implementation:** Preloaded audio files (MP3/WAV), runtime handles Web Audio API.
+
+### 3. Sprite API
+
+**Required sprites:**
+
+| Sprite | Frames | Notes |
+|--------|--------|-------|
+| pacman-right | 3 | Closed, half-open, open mouth |
+| pacman-left | 3 | Or horizontal flip |
+| pacman-up | 3 | |
+| pacman-down | 3 | |
+| pacman-death | 11 | Death animation sequence |
+| ghost-red | 2 | Wobble animation |
+| ghost-pink | 2 | |
+| ghost-cyan | 2 | |
+| ghost-orange | 2 | |
+| ghost-frightened | 2 | Blue body |
+| ghost-flash | 4 | Blue/white alternation |
+| ghost-eyes-right | 1 | Eyes returning to house |
+| ghost-eyes-left | 1 | |
+| ghost-eyes-up | 1 | |
+| ghost-eyes-down | 1 | |
+| fruit-cherry | 1 | Level 1 |
+| fruit-strawberry | 1 | Level 2 |
+| fruit-peach | 1 | Levels 3-4 |
+| fruit-apple | 1 | Levels 5-6 |
+| fruit-grapes | 1 | Levels 7-8 |
+| fruit-galaxian | 1 | Levels 9-10 |
+| fruit-bell | 1 | Levels 11-12 |
+| fruit-key | 1 | Level 13+ |
+| score-200 | 1 | Ghost eaten popup |
+| score-400 | 1 | |
+| score-800 | 1 | |
+| score-1600 | 1 | |
+
+**Proposed API:**
+
+```
+sprite("ghost-red", x, y)           // Draw sprite at position
+sprite("ghost-red", x, y, frame)    // Draw specific animation frame (0-indexed)
+```
+
+**Optional enhancements:**
+```
+spriteFlip("pacman-right", x, y, true, false)  // Flip horizontal/vertical
+spriteScale("ghost-red", x, y, 2.0)            // Scale factor
+```
+
+**Browser implementation:** Preloaded spritesheet, runtime handles slicing and drawing to canvas.
 
 ---
 
-## Recommendations
+## Feasibility With New Features
 
-### For a More Faithful Implementation in Current TPL
+### Coverage Estimate with sqrt() + Audio + Sprites
 
-1. **Use squared distance comparison** instead of Euclidean distance (mathematically equivalent for comparisons)
-2. **Implement state machine** using integer constants for modes
-3. **Add mode timer** using accumulated sleep calls
-4. **Implement ghost chain scoring** with counter reset per energizer
-5. **Add scatter targets** for each ghost
-6. **Implement proper ghost exit sequencing**
-7. **Add fruit spawning** at 70/170 dot counts
+| Category | Coverage | Notes |
+|----------|----------|-------|
+| Maze & Movement | 95% | Cornering pre/post-turn is remaining 5% |
+| Ghost AI | 95% | All targeting fully implementable |
+| Frightened Mode | 100% | `random()` + sprites handle everything |
+| Scoring | 100% | Implementation work only |
+| Ghost House | 100% | Implementation work only |
+| Audio | 100% | With proposed API |
+| Visuals | 95% | Sprites handle all animations |
+| Level Progression | 100% | Data tables, no new features needed |
 
-### Language Features to Request
+### What Remains at <100%
 
-**Priority 1 (High Impact):**
-- `sqrt(x)` - Square root function
-- `floor(x)`, `ceil(x)`, `round(x)` - Rounding functions
-- `abs(x)` - Absolute value
-- `millis()` or frame counter - Precise timing
-
-**Priority 2 (Medium Impact):**
-- Bitwise operators - For efficient flags and PRNG
-- `sin(x)`, `cos(x)` - For animations (optional)
-- Audio functions - `playSound()`, `stopSound()`
-
-**Priority 3 (Polish):**
-- Image/sprite loading
-- `for` loop syntax
-- Constants with `const`
+1. **Cornering mechanic** (3-4 pixel early turn window) - Subtle physics detail
+2. **Pass-through bug** (same-frame tile swap) - Extremely rare edge case
+3. **Level 256 corruption** - Intentional bug replication (optional)
 
 ---
 
 ## Conclusion
 
-The current TPL language provides sufficient features for a **recognizable PAC-MAN game** but lacks the precision required for an **arcade-accurate reproduction**. The most critical gaps are:
+**With `sqrt()`, audio API, and sprite API: 90-95% spec accuracy achievable.**
 
-1. **Mathematical functions** (`sqrt`, `abs`) - Can be worked around
-2. **Precise timing** - Partially addressable with `sleep()`
-3. **Audio support** - Cannot be addressed without new API
+The remaining 5-10% consists of subtle physics details (cornering) and rare edge cases (pass-through bug) that even many official ports don't replicate.
 
-A faithful implementation is approximately **70% achievable** with current TPL features using workarounds. The remaining 30% would require language extensions, primarily around timing precision and audio support.
+### Summary of Required Features
 
-The current `pacman.tpl` implements roughly **30-40%** of the full specification. With significant additional work using existing TPL features, this could be raised to **60-70%** accuracy.
+| Feature | Priority | Status |
+|---------|----------|--------|
+| `sqrt(x)` | Required | Confirmed for upcoming release |
+| `sound(name)` | Required | Proposed |
+| `soundLoop(name)` | Required | Proposed |
+| `soundStop(name)` | Required | Proposed |
+| `sprite(name, x, y, frame)` | Required | Proposed |
+
+### Implementation Roadmap
+
+1. **R8**: Add `sqrt()`, audio API, sprite API to TPL runtime
+2. **R9**: Upgrade `pacman.tpl` with full ghost AI, audio, sprites, level progression
