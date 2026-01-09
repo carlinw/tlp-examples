@@ -3,6 +3,22 @@
 // Arrow keys to move, eat all 244 dots to advance!
 
 // ============================================
+// AUDIO LOADING
+// ============================================
+
+// Load sound effects from daleharvey/pacman GitHub repository
+let audioBase = "https://raw.githubusercontent.com/daleharvey/pacman/master/audio/"
+
+sound.load("intro", audioBase + "opening_song.mp3")
+sound.load("chomp", audioBase + "eating.short.mp3")
+sound.load("eatghost", audioBase + "eatghost.mp3")
+sound.load("eatpill", audioBase + "eatpill.mp3")
+sound.load("die", audioBase + "die.mp3")
+sound.load("siren", audioBase + "siren.mp3")
+sound.load("extralive", audioBase + "extra lives.mp3")
+sound.load("intermission", audioBase + "intermission.mp3")
+
+// ============================================
 // CONFIGURATION CONSTANTS
 // ============================================
 
@@ -483,6 +499,11 @@ let scorePopupX = 0
 let scorePopupY = 0
 let scorePopupTimer = 0
 
+// Audio state
+let sirenPlaying = false
+let lastChompTime = 0
+let chompCounter = 0
+
 // ============================================
 // INITIALIZATION
 // ============================================
@@ -769,6 +790,12 @@ function eatDots() {
     dotsEaten = dotsEaten + 1
     inactivityTimer = 0
 
+    // Play chomp sound (alternating to create waka-waka effect)
+    chompCounter = chompCounter + 1
+    if (chompCounter % 2 equals 0) {
+      sound.play("chomp")
+    }
+
     // Update dot counters
     if (useGlobalCounter) {
       globalDotCounter = globalDotCounter + 1
@@ -797,6 +824,11 @@ function eatDots() {
     dotsEaten = dotsEaten + 1
     inactivityTimer = 0
 
+    // Play power pellet sound and stop siren
+    sound.play("eatpill")
+    sound.stop("siren")
+    sirenPlaying = false
+
     // Activate frightened mode
     let idx = getSpeedIndex(level)
     frightTimer = frightDuration[idx]
@@ -814,8 +846,13 @@ function eatDots() {
   }
 
   // Extra life at 10,000 points
-  if (score >= 10000 and score - 10 < 10000) {
+  let prevScore = score - 10
+  if (cell equals 3) {
+    prevScore = score - 50
+  }
+  if (score >= 10000 and prevScore < 10000) {
     lives = lives + 1
+    sound.play("extralive")
   }
 }
 
@@ -945,6 +982,7 @@ function checkCollisions() {
         if (frightTimer > 0) {
           // Eat ghost!
           ghost.becomeEyes()
+          sound.play("eatghost")
 
           let points = ghostPoints[ghostsEatenThisPower]
           score = score + points
@@ -960,6 +998,8 @@ function checkCollisions() {
           scorePopupTimer = 30
         } else {
           // Pac-Man dies!
+          sound.stop("siren")
+          sirenPlaying = false
           return true
         }
       }
@@ -1273,6 +1313,13 @@ function drawGameOver() {
 
 function updateGame() {
   if (gameState equals STATE_READY) {
+    // Play intro music at start of ready state
+    if (stateTimer equals 0) {
+      sound.stop("siren")
+      sirenPlaying = false
+      sound.play("intro")
+    }
+
     stateTimer = stateTimer + 1
     if (stateTimer > 120) {  // 2 seconds
       gameState = STATE_PLAYING
@@ -1281,6 +1328,18 @@ function updateGame() {
     drawReadyScreen()
 
   } else if (gameState equals STATE_PLAYING) {
+    // Start siren if not playing and not in frightened mode
+    if (not sirenPlaying and frightTimer <= 0) {
+      sound.loop("siren")
+      sirenPlaying = true
+    }
+
+    // Resume siren when frightened mode ends
+    if (frightTimer equals 1 and sirenPlaying equals false) {
+      sound.loop("siren")
+      sirenPlaying = true
+    }
+
     handleInput()
     movePacman()
     eatDots()
@@ -1294,12 +1353,15 @@ function updateGame() {
     if (checkCollisions()) {
       gameState = STATE_DEATH
       stateTimer = 0
+      sound.play("die")
     }
 
     // Check win condition
     if (countDotsRemaining() equals 0) {
       gameState = STATE_LEVEL_COMPLETE
       stateTimer = 0
+      sound.stop("siren")
+      sirenPlaying = false
     }
 
     // Draw
@@ -1328,6 +1390,11 @@ function updateGame() {
   } else if (gameState equals STATE_LEVEL_COMPLETE) {
     stateTimer = stateTimer + 1
     drawLevelComplete()
+
+    // Play intermission music
+    if (stateTimer equals 1) {
+      sound.play("intermission")
+    }
 
     if (stateTimer > 120) {
       level = level + 1
