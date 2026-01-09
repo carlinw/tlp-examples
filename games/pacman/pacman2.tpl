@@ -27,15 +27,12 @@ let spriteBase = "https://raw.githubusercontent.com/vilbeyli/Pacman/master/Asset
 
 sprite.load("pacman", spriteBase + "pacman.png")
 sprite.load("blinky", spriteBase + "blinky.png")
-sprite.load("spritesheet", spriteBase + "spritesheet.png")
-
-// Also load from rm-hull/big-bang for a complete sprite sheet
-let spriteBase2 = "https://raw.githubusercontent.com/rm-hull/big-bang/master/examples/pacman/"
-sprite.load("spritemap", spriteBase2 + "spritemap-384.png")
+sprite.load("spritemap", spriteBase + "spritesheet.png")
 
 // Flag to control whether to use sprites or primitives
 // Set to false to use primitive drawing instead
-let useSprites = true
+// Note: Set to true once sprite frame layout is configured correctly
+let useSprites = false
 
 // Sprite sheet layout for spritemap-384.png (12x12 pixel sprites)
 // The sprite sheet has sprites arranged in a grid
