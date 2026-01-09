@@ -19,6 +19,25 @@ sound.load("extralive", audioBase + "extra lives.mp3")
 sound.load("intermission", audioBase + "intermission.mp3")
 
 // ============================================
+// SPRITE LOADING
+// ============================================
+
+// Load sprites from vilbeyli/Pacman GitHub repository
+let spriteBase = "https://raw.githubusercontent.com/vilbeyli/Pacman/master/Assets/Sprites/"
+
+sprite.load("pacman", spriteBase + "pacman.png")
+sprite.load("blinky", spriteBase + "blinky.png")
+sprite.load("spritesheet", spriteBase + "spritesheet.png")
+
+// Also load from rm-hull/big-bang for a complete sprite sheet
+let spriteBase2 = "https://raw.githubusercontent.com/rm-hull/big-bang/master/examples/pacman/"
+sprite.load("spritemap", spriteBase2 + "spritemap-384.png")
+
+// Flag to control whether to use sprites or primitives
+// Set to false if sprites fail to load
+let useSprites = true
+
+// ============================================
 // CONFIGURATION CONSTANTS
 // ============================================
 
@@ -259,23 +278,6 @@ class Ghost {
   isInHouse, dotCounter, dotLimit,
   isActive, isEyes,
 
-  // Initialize ghost
-  init(n, col, sx, sy, startX, startY, inHouse, dotLim) {
-    this.name = n
-    this.colorName = col
-    this.scatterTargetX = sx
-    this.scatterTargetY = sy
-    this.tileX = startX
-    this.tileY = startY
-    this.direction = DIR_UP
-    this.mode = MODE_SCATTER
-    this.isInHouse = inHouse
-    this.dotCounter = 0
-    this.dotLimit = dotLim
-    this.isActive = not inHouse
-    this.isEyes = false
-  }
-
   // Get chase target based on ghost personality
   getChaseTarget(pacX, pacY, pacDir, blinkyX, blinkyY) {
     let targetX = pacX
@@ -510,21 +512,23 @@ let chompCounter = 0
 
 function initGhosts() {
   // Create 4 ghosts with their personalities
-  let blinky = new Ghost()
-  blinky.init("blinky", "red", 25, -3, 13, 11, false, 0)
-  blinky.isActive = true
-  blinky.direction = DIR_LEFT
+  // Constructor args: name, colorName, tileX, tileY, direction, mode,
+  //                   scatterTargetX, scatterTargetY, isInHouse, dotCounter, dotLimit, isActive, isEyes
 
-  let pinky = new Ghost()
-  pinky.init("pinky", "pink", 2, -3, 13, 14, true, 0)
-
-  let inky = new Ghost()
   let inkyLimit = inkyDotLimit[getLevelIndex(level)]
-  inky.init("inky", "cyan", 27, 32, 11, 14, true, inkyLimit)
-
-  let clyde = new Ghost()
   let clydeLimit = clydeDotLimit[getLevelIndex(level)]
-  clyde.init("clyde", "orange", 0, 32, 15, 14, true, clydeLimit)
+
+  // Blinky: starts outside ghost house, active immediately
+  let blinky = new Ghost("blinky", "red", 13, 11, DIR_LEFT, MODE_SCATTER, 25, -3, false, 0, 0, true, false)
+
+  // Pinky: starts in center of ghost house
+  let pinky = new Ghost("pinky", "pink", 13, 14, DIR_UP, MODE_SCATTER, 2, -3, true, 0, 0, false, false)
+
+  // Inky: starts left side of ghost house
+  let inky = new Ghost("inky", "cyan", 11, 14, DIR_UP, MODE_SCATTER, 27, 32, true, 0, inkyLimit, false, false)
+
+  // Clyde: starts right side of ghost house
+  let clyde = new Ghost("clyde", "orange", 15, 14, DIR_UP, MODE_SCATTER, 0, 32, true, 0, clydeLimit, false, false)
 
   ghosts = [blinky, pinky, inky, clyde]
 }
