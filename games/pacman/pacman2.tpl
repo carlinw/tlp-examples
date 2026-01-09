@@ -19,19 +19,16 @@ sound.load("extralive", audioBase + "extra lives.mp3")
 sound.load("intermission", audioBase + "intermission.mp3")
 
 // ============================================
-// SPRITE LOADING
+// SPRITE LOADING (disabled - using primitive drawing)
 // ============================================
 
-// Load sprites from vilbeyli/Pacman GitHub repository
-let spriteBase = "https://raw.githubusercontent.com/vilbeyli/Pacman/master/Assets/Sprites/"
-
-sprite.load("pacman", spriteBase + "pacman.png")
-sprite.load("blinky", spriteBase + "blinky.png")
-sprite.load("spritemap", spriteBase + "spritesheet.png")
+// Sprite URLs for future use:
+// let spriteBase = "https://raw.githubusercontent.com/vilbeyli/Pacman/master/Assets/Sprites/"
+// sprite.load("pacman", spriteBase + "pacman.png")
+// sprite.load("blinky", spriteBase + "blinky.png")
+// sprite.load("spritemap", spriteBase + "spritesheet.png")
 
 // Flag to control whether to use sprites or primitives
-// Set to false to use primitive drawing instead
-// Note: Set to true once sprite frame layout is configured correctly
 let useSprites = false
 
 // Sprite sheet layout for spritemap-384.png (12x12 pixel sprites)
