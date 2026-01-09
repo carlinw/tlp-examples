@@ -77,7 +77,7 @@ let animFrame = 0
 // CONFIGURATION CONSTANTS
 // ============================================
 
-let CELL_SIZE = 12
+let CELL_SIZE = 10
 let COLS = 28
 let ROWS = 31
 let TOTAL_DOTS = 244
@@ -1330,13 +1330,13 @@ function drawFruit() {
 function drawHUD() {
   // Score
   color("white")
-  text(5, 380, "SCORE: " + score)
+  text(5, 320, "SCORE: " + score)
 
   // Level
-  text(120, 380, "LVL: " + level)
+  text(100, 320, "LVL: " + level)
 
   // Lives
-  text(200, 380, "LIVES: " + lives)
+  text(170, 320, "LIVES: " + lives)
 
   // Score popup
   if (scorePopupTimer > 0) {
