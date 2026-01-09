@@ -34,8 +34,50 @@ let spriteBase2 = "https://raw.githubusercontent.com/rm-hull/big-bang/master/exa
 sprite.load("spritemap", spriteBase2 + "spritemap-384.png")
 
 // Flag to control whether to use sprites or primitives
-// Set to false if sprites fail to load
+// Set to false to use primitive drawing instead
 let useSprites = true
+
+// Sprite sheet layout for spritemap-384.png (12x12 pixel sprites)
+// The sprite sheet has sprites arranged in a grid
+let SPRITE_SIZE = 12
+let SPRITE_COLS = 16  // sprites per row in the sheet
+
+// Pac-Man sprite frames (approximate positions in standard layout)
+// Frame = row * SPRITE_COLS + col
+let PAC_RIGHT_1 = 0
+let PAC_RIGHT_2 = 1
+let PAC_LEFT_1 = 2
+let PAC_LEFT_2 = 3
+let PAC_UP_1 = 4
+let PAC_UP_2 = 5
+let PAC_DOWN_1 = 6
+let PAC_DOWN_2 = 7
+let PAC_CLOSED = 8
+
+// Ghost sprite frames (row 1-4 typically)
+let GHOST_RIGHT_1 = 16
+let GHOST_RIGHT_2 = 17
+let GHOST_LEFT_1 = 18
+let GHOST_LEFT_2 = 19
+let GHOST_UP_1 = 20
+let GHOST_UP_2 = 21
+let GHOST_DOWN_1 = 22
+let GHOST_DOWN_2 = 23
+
+// Frightened ghost
+let GHOST_FRIGHT_1 = 24
+let GHOST_FRIGHT_2 = 25
+let GHOST_FLASH_1 = 26
+let GHOST_FLASH_2 = 27
+
+// Eyes
+let EYES_RIGHT = 28
+let EYES_LEFT = 29
+let EYES_UP = 30
+let EYES_DOWN = 31
+
+// Animation counter
+let animFrame = 0
 
 // ============================================
 // CONFIGURATION CONSTANTS
@@ -1059,91 +1101,163 @@ function drawMap() {
 }
 
 function drawPacman() {
-  color("yellow")
-  fill()
-  let px = pacX * CELL_SIZE + 6
-  let py = pacY * CELL_SIZE + 6
-  circle(px, py, 5)
+  let px = pacX * CELL_SIZE
+  let py = pacY * CELL_SIZE
 
-  // Draw mouth
-  if (mouthOpen) {
-    color("black")
-    fill()
-    if (pacDir equals DIR_RIGHT) {
-      triangle(px, py, px + 6, py - 3, px + 6, py + 3)
-    } else if (pacDir equals DIR_LEFT) {
-      triangle(px, py, px - 6, py - 3, px - 6, py + 3)
-    } else if (pacDir equals DIR_DOWN) {
-      triangle(px, py, px - 3, py + 6, px + 3, py + 6)
-    } else if (pacDir equals DIR_UP) {
-      triangle(px, py, px - 3, py - 6, px + 3, py - 6)
+  if (useSprites) {
+    // Select frame based on direction and animation
+    let frame = PAC_CLOSED
+    if (mouthOpen) {
+      if (pacDir equals DIR_RIGHT) {
+        frame = PAC_RIGHT_1
+      } else if (pacDir equals DIR_LEFT) {
+        frame = PAC_LEFT_1
+      } else if (pacDir equals DIR_UP) {
+        frame = PAC_UP_1
+      } else if (pacDir equals DIR_DOWN) {
+        frame = PAC_DOWN_1
+      } else {
+        frame = PAC_RIGHT_1
+      }
     } else {
-      triangle(px, py, px + 6, py - 3, px + 6, py + 3)
+      if (pacDir equals DIR_RIGHT) {
+        frame = PAC_RIGHT_2
+      } else if (pacDir equals DIR_LEFT) {
+        frame = PAC_LEFT_2
+      } else if (pacDir equals DIR_UP) {
+        frame = PAC_UP_2
+      } else if (pacDir equals DIR_DOWN) {
+        frame = PAC_DOWN_2
+      } else {
+        frame = PAC_RIGHT_2
+      }
+    }
+    sprite.draw("spritemap", px, py, frame, SPRITE_SIZE, SPRITE_SIZE)
+  } else {
+    // Fallback to primitive drawing
+    let cx = px + 6
+    let cy = py + 6
+    color("yellow")
+    fill()
+    circle(cx, cy, 5)
+
+    if (mouthOpen) {
+      color("black")
+      fill()
+      if (pacDir equals DIR_RIGHT) {
+        triangle(cx, cy, cx + 6, cy - 3, cx + 6, cy + 3)
+      } else if (pacDir equals DIR_LEFT) {
+        triangle(cx, cy, cx - 6, cy - 3, cx - 6, cy + 3)
+      } else if (pacDir equals DIR_DOWN) {
+        triangle(cx, cy, cx - 3, cy + 6, cx + 3, cy + 6)
+      } else if (pacDir equals DIR_UP) {
+        triangle(cx, cy, cx - 3, cy - 6, cx + 3, cy - 6)
+      } else {
+        triangle(cx, cy, cx + 6, cy - 3, cx + 6, cy + 3)
+      }
     }
   }
 }
 
 function drawGhost(ghost) {
-  let px = ghost.tileX * CELL_SIZE + 6
-  let py = ghost.tileY * CELL_SIZE + 6
+  let px = ghost.tileX * CELL_SIZE
+  let py = ghost.tileY * CELL_SIZE
 
-  // Determine color
-  let ghostColor = ghost.colorName
+  if (useSprites) {
+    let frame = GHOST_RIGHT_1
 
-  if (ghost.isEyes) {
-    // Just draw eyes
-    color("white")
-    fill()
-    circle(px - 2, py - 2, 2)
-    circle(px + 2, py - 2, 2)
-    color("blue")
-    fill()
-    // Pupil direction
-    let pupilDX = dirDX[ghost.direction]
-    let pupilDY = dirDY[ghost.direction]
-    circle(px - 2 + pupilDX, py - 2 + pupilDY, 1)
-    circle(px + 2 + pupilDX, py - 2 + pupilDY, 1)
-    return
-  }
-
-  if (frightTimer > 0 and not ghost.isEyes) {
-    if (frightFlash) {
-      ghostColor = "white"
+    if (ghost.isEyes) {
+      // Eyes only - returning to ghost house
+      if (ghost.direction equals DIR_RIGHT) {
+        frame = EYES_RIGHT
+      } else if (ghost.direction equals DIR_LEFT) {
+        frame = EYES_LEFT
+      } else if (ghost.direction equals DIR_UP) {
+        frame = EYES_UP
+      } else {
+        frame = EYES_DOWN
+      }
+    } else if (frightTimer > 0) {
+      // Frightened ghost
+      if (frightFlash) {
+        frame = GHOST_FLASH_1 + (animFrame % 2)
+      } else {
+        frame = GHOST_FRIGHT_1 + (animFrame % 2)
+      }
     } else {
-      ghostColor = "darkblue"
+      // Normal ghost - select frame based on direction
+      let baseFrame = GHOST_RIGHT_1
+      if (ghost.direction equals DIR_RIGHT) {
+        baseFrame = GHOST_RIGHT_1
+      } else if (ghost.direction equals DIR_LEFT) {
+        baseFrame = GHOST_LEFT_1
+      } else if (ghost.direction equals DIR_UP) {
+        baseFrame = GHOST_UP_1
+      } else {
+        baseFrame = GHOST_DOWN_1
+      }
+      frame = baseFrame + (animFrame % 2)
     }
-  }
 
-  // Body
-  color(ghostColor)
-  fill()
-  circle(px, py - 1, 5)
-  rect(px - 5, py - 1, 10, 6)
-
-  // Wavy bottom
-  triangle(px - 5, py + 5, px - 3, py + 5, px - 4, py + 3)
-  triangle(px - 1, py + 5, px + 1, py + 5, px, py + 3)
-  triangle(px + 3, py + 5, px + 5, py + 5, px + 4, py + 3)
-
-  // Eyes
-  if (frightTimer > 0) {
-    // Frightened eyes (simple)
-    color("white")
-    fill()
-    circle(px - 2, py - 2, 1)
-    circle(px + 2, py - 2, 1)
+    sprite.draw("spritemap", px, py, frame, SPRITE_SIZE, SPRITE_SIZE)
   } else {
-    // Normal eyes with pupils
-    color("white")
+    // Fallback to primitive drawing
+    let cx = px + 6
+    let cy = py + 6
+    let ghostColor = ghost.colorName
+
+    if (ghost.isEyes) {
+      // Just draw eyes
+      color("white")
+      fill()
+      circle(cx - 2, cy - 2, 2)
+      circle(cx + 2, cy - 2, 2)
+      color("blue")
+      fill()
+      let pupilDX = dirDX[ghost.direction]
+      let pupilDY = dirDY[ghost.direction]
+      circle(cx - 2 + pupilDX, cy - 2 + pupilDY, 1)
+      circle(cx + 2 + pupilDX, cy - 2 + pupilDY, 1)
+      return
+    }
+
+    if (frightTimer > 0) {
+      if (frightFlash) {
+        ghostColor = "white"
+      } else {
+        ghostColor = "darkblue"
+      }
+    }
+
+    // Body
+    color(ghostColor)
     fill()
-    circle(px - 2, py - 2, 2)
-    circle(px + 2, py - 2, 2)
-    color("blue")
-    fill()
-    let pupilDX = dirDX[ghost.direction]
-    let pupilDY = dirDY[ghost.direction]
-    circle(px - 2 + pupilDX, py - 2 + pupilDY, 1)
-    circle(px + 2 + pupilDX, py - 2 + pupilDY, 1)
+    circle(cx, cy - 1, 5)
+    rect(cx - 5, cy - 1, 10, 6)
+
+    // Wavy bottom
+    triangle(cx - 5, cy + 5, cx - 3, cy + 5, cx - 4, cy + 3)
+    triangle(cx - 1, cy + 5, cx + 1, cy + 5, cx, cy + 3)
+    triangle(cx + 3, cy + 5, cx + 5, cy + 5, cx + 4, cy + 3)
+
+    // Eyes
+    if (frightTimer > 0) {
+      color("white")
+      fill()
+      circle(cx - 2, cy - 2, 1)
+      circle(cx + 2, cy - 2, 1)
+    } else {
+      color("white")
+      fill()
+      circle(cx - 2, cy - 2, 2)
+      circle(cx + 2, cy - 2, 2)
+      color("blue")
+      fill()
+      let pupilDX = dirDX[ghost.direction]
+      let pupilDY = dirDY[ghost.direction]
+      circle(cx - 2 + pupilDX, cy - 2 + pupilDY, 1)
+      circle(cx + 2 + pupilDX, cy - 2 + pupilDY, 1)
+    }
   }
 }
 
@@ -1422,6 +1536,7 @@ looplimit(1000000)
 
 while (gameState not equals STATE_GAME_OVER) {
   updateGame()
+  animFrame = animFrame + 1  // Increment animation frame counter
   sleep(17)  // ~60 FPS
 }
 
